@@ -12,7 +12,8 @@ Simple, minimal setup for local development.
 
 1. **Start everything**:
    ```bash
-   ./SoulTalk-Infra/scripts/start.sh
+   cd SoulTalk-Infra
+   ./scripts/start.sh
    ```
 
 2. **Start mobile app**:
@@ -53,17 +54,18 @@ That's it! You're ready to develop.
 ### Useful Commands
 
 ```bash
-# View all logs
-./SoulTalk-Infra/scripts/logs.sh
+# View all logs (from SoulTalk-Infra directory)
+cd SoulTalk-Infra
+./scripts/logs.sh
 
 # View specific service logs
-./SoulTalk-Infra/scripts/logs.sh backend
+./scripts/logs.sh backend
 
 # Stop everything
-./SoulTalk-Infra/scripts/stop.sh
+./scripts/stop.sh
 
 # Reset everything (fresh start)
-./SoulTalk-Infra/scripts/reset.sh
+./scripts/reset.sh
 
 # Check service status
 docker-compose ps
@@ -101,10 +103,11 @@ SoulTalk/
 ├── SoulTalk-backend/     # FastAPI backend
 ├── SoulTalk-Mobile/      # React Native app
 ├── SoulTalk-Infra/       # Development infrastructure
-│   ├── scripts/          # Helper scripts
-│   └── README.md
-├── docker-compose.yml    # All services
-└── .env                  # Environment config
+│   ├── docker-compose.yml   # All services
+│   ├── keycloak-realm-config.json
+│   └── scripts/          # Helper scripts
+├── SoulTalk-Docs/        # All documentation
+└── README.md            # Project overview
 ```
 
 ## Next Steps

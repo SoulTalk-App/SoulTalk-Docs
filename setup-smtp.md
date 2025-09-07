@@ -1,6 +1,18 @@
-# Setting Up Email Verification for SoulTalk
+# Email Setup for SoulTalk
 
-## Option 1: Gmail SMTP Setup (Recommended for Development)
+Email verification is already configured with Mailhog for development. This guide shows additional options for production use.
+
+## Current Setup (Development)
+
+**Mailhog is already configured and working:**
+- SMTP Server: Mailhog (automatic)
+- Web UI: http://localhost:8025
+- All emails are caught and displayed in the web interface
+- No external SMTP configuration needed
+
+## Production Options
+
+### Option 1: Gmail SMTP Setup
 
 ### Step 1: Get Gmail Credentials
 1. Go to your Google Account: https://myaccount.google.com/
@@ -27,31 +39,15 @@
 6. Click "Test connection" to verify
 7. Click "Save"
 
-## Option 2: Use Development Email Service
+## Development Testing (Already Configured)
 
-### Using Mailhog (Email Testing Tool)
-```bash
-# Add to docker-compose.yml
-mailhog:
-  image: mailhog/mailhog:latest
-  container_name: soultalk-mailhog
-  ports:
-    - "1025:1025"  # SMTP
-    - "8025:8025"  # Web UI
-  networks:
-    - soultalk-network
-```
+**Mailhog is already set up in docker-compose.yml:**
+- Container running automatically
+- SMTP configured in Keycloak
+- All verification emails appear at http://localhost:8025
+- No additional configuration needed
 
-Then configure Keycloak SMTP:
-- **Host**: mailhog
-- **Port**: 1025
-- **Enable StartTLS**: OFF
-- **Enable Authentication**: OFF
-- **From**: noreply@soultalk.local
-
-View emails at: http://localhost:8025
-
-## Option 3: Use SendGrid (Production-Ready)
+## Option 2: SendGrid (Production-Ready)
 
 1. Sign up for SendGrid free account
 2. Create API key
@@ -64,18 +60,22 @@ View emails at: http://localhost:8025
 
 ## Testing Email Verification
 
-After SMTP is configured:
+**Development (Current Setup):**
+1. Register a new user via mobile app or API
+2. Check Mailhog at http://localhost:8025 for verification email
+3. Click the verification link in the email
+4. Return to app and login - should work
 
-1. Register a new user via API or mobile app
-2. Check your email for verification link
-3. Click the verification link
-4. Try logging in - it should work now
+**Production:**
+1. Configure Gmail or SendGrid SMTP in Keycloak
+2. Test with real email addresses
+3. Verify emails are delivered to actual inboxes
 
 ## Current Status
 - ✅ Keycloak realm configured for email verification
 - ✅ User registration creates users with email verification required  
-- ❌ SMTP server credentials missing
-- ❌ Emails not being sent
+- ✅ Mailhog SMTP server configured and working
+- ✅ Emails are being sent and caught by Mailhog
 
 ## Quick Test Commands
 

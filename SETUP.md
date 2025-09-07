@@ -7,9 +7,10 @@ This guide will walk you through setting up the complete SoulTalk development en
 By the end of this setup, you'll have:
 - ✅ Keycloak authentication server running locally
 - ✅ FastAPI backend with Keycloak integration
-- ✅ PostgreSQL database for data persistence
+- ✅ PostgreSQL database for Keycloak
 - ✅ Redis for caching and session management
 - ✅ React Native mobile app with authentication flows
+- ✅ Email testing with Mailhog
 - ✅ Complete user registration, login, and password reset flows
 
 ## 📋 Prerequisites Checklist
@@ -19,7 +20,7 @@ Before starting, ensure you have:
 - [ ] **Docker Desktop** installed and running
 - [ ] **Docker Compose** (comes with Docker Desktop)
 - [ ] **Node.js 18+** (for React Native development)
-- [ ] **Python 3.11+** (for backend development)
+- [ ] **Python 3.11+** (optional, for backend development)
 - [ ] **Git** for version control
 - [ ] **Code Editor** (VS Code recommended)
 
@@ -30,198 +31,101 @@ Before starting, ensure you have:
 
 ## 🚀 Step-by-Step Setup
 
-### Step 1: Project Setup
+### Step 1: Project Structure Verification
 
-```bash
-# Clone the repository (or create the directory structure)
-cd Desktop
-mkdir SoulTalk
-cd SoulTalk
-
-# Copy all the project files you've created
-# The structure should look like:
-# SoulTalk/
-# ├── SoulTalk-backend/
-# ├── SoulTalk-Mobile/
-# ├── SoulTalk-Infra/
-# ├── docker-compose.yml
-# ├── nginx.conf
-# ├── .env
-# └── keycloak-realm-config.json
+Verify your project structure looks like this:
+```
+SoulTalk/
+├── SoulTalk-backend/         # FastAPI backend
+├── SoulTalk-Mobile/          # React Native app
+├── SoulTalk-Infra/           # Infrastructure
+│   ├── docker-compose.yml
+│   ├── keycloak-realm-config.json
+│   └── scripts/
+├── SoulTalk-Docs/           # Documentation
+└── README.md               # Project overview
 ```
 
-### Step 2: Environment Configuration
+### Step 2: Start Infrastructure Services
 
 ```bash
-# Make sure your .env file has the correct values
-cat > .env << 'EOF'
-# Database Configuration
-DATABASE_URL=postgresql://postgres:password@localhost:5432/soultalk
-POSTGRES_DB=soultalk
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=password
-
-# Keycloak Configuration
-KEYCLOAK_SERVER_URL=http://localhost:8080
-KEYCLOAK_REALM=soultalk
-KEYCLOAK_CLIENT_ID=soultalk-backend
-KEYCLOAK_CLIENT_SECRET=development-secret-123
-KEYCLOAK_ADMIN_USERNAME=admin
-KEYCLOAK_ADMIN_PASSWORD=admin
-
-# Mobile App Keycloak Client
-KEYCLOAK_MOBILE_CLIENT_ID=soultalk-mobile
-KEYCLOAK_MOBILE_CLIENT_SECRET=mobile-development-secret-123
-
-# Redis Configuration
-REDIS_URL=redis://localhost:6379
-
-# JWT Configuration
-JWT_SECRET=development-jwt-secret-key-change-in-production
-JWT_ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=15
-REFRESH_TOKEN_EXPIRE_DAYS=30
-
-# Application Configuration
-APP_NAME=SoulTalk
-APP_VERSION=1.0.0
-DEBUG=true
-ENVIRONMENT=development
-
-# CORS Configuration
-CORS_ORIGINS=["http://localhost:3000", "http://127.0.0.1:3000"]
-
-# Security
-SECRET_KEY=development-secret-key-change-in-production
-ALGORITHM=HS256
-
-# Rate Limiting
-RATE_LIMIT_PER_MINUTE=60
-RATE_LIMIT_BURST=10
-
-# Logging
-LOG_LEVEL=INFO
-LOG_FORMAT=json
-EOF
-```
-
-### Step 3: Start the Backend Services
-
-```bash
-# Start all backend services with Docker Compose
-docker-compose up -d
-
-# Verify services are starting
-docker-compose ps
-
-# Follow the logs to see startup progress
-docker-compose logs -f
+cd SoulTalk-Infra
+./scripts/start.sh
 ```
 
 **Expected Output:**
 ```
+🚀 Starting SoulTalk Development Environment...
+📦 Starting Docker services...
 Creating soultalk-postgres ... done
 Creating soultalk-redis    ... done
 Creating soultalk-keycloak ... done
 Creating soultalk-backend  ... done
-Creating soultalk-nginx    ... done
+Creating soultalk-mailhog  ... done
 ```
 
-### Step 4: Wait for Keycloak to Initialize
+### Step 3: Wait for Services to Start
 
-Keycloak takes 2-3 minutes to fully start. Monitor the logs:
-
+Monitor the startup process:
 ```bash
-# Watch Keycloak logs until you see "Keycloak ... started"
-docker-compose logs -f keycloak
+cd SoulTalk-Infra
+docker-compose ps
 ```
 
-**Look for this line:**
-```
-soultalk-keycloak | ... Keycloak 23.0.0 started in 45.123s
-```
+Wait until all services show "healthy" status. Keycloak takes 2-3 minutes to fully start.
 
-### Step 5: Import Keycloak Realm Configuration
+### Step 4: Verify Services
 
-```bash
-# Get admin access token
-ADMIN_TOKEN=$(curl -s -X POST 'http://localhost:8080/realms/master/protocol/openid-connect/token' \
-  -d 'grant_type=password&username=admin&password=admin&client_id=admin-cli' | \
-  python3 -c "import sys, json; print(json.load(sys.stdin)['access_token'])")
+Check that all services are accessible:
 
-# Import the SoulTalk realm
-curl -X POST "http://localhost:8080/admin/realms" \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d @keycloak-realm-config.json
+- **Backend API**: http://localhost:8000/health
+- **Keycloak Admin**: http://localhost:8080/admin (admin/admin)
+- **Mailhog**: http://localhost:8025
+- **API Documentation**: http://localhost:8000/docs
 
-# Verify realm was created
-curl -H "Authorization: Bearer $ADMIN_TOKEN" \
-  "http://localhost:8080/admin/realms/soultalk" | python3 -m json.tool
-```
-
-### Step 6: Verify Backend API
-
-```bash
-# Test health endpoint
-curl http://localhost:8000/health
-
-# Test API documentation
-open http://localhost:8000/docs
-```
-
-**Expected Response:**
-```json
-{
-  "status": "healthy",
-  "service": "SoulTalk",
-  "version": "1.0.0",
-  "environment": "development"
-}
-```
-
-### Step 7: Set Up Mobile App
+### Step 5: Set Up Mobile App
 
 ```bash
 cd SoulTalk-Mobile
-
-# Install dependencies
 npm install
-
-# Start Expo development server
-npx expo start
-
-# Follow the QR code or press 'i' for iOS simulator, 'a' for Android emulator
+npm start
 ```
 
-### Step 8: Test the Complete Authentication Flow
+Follow the Expo instructions:
+- Press `w` to open in web browser
+- Press `i` for iOS simulator
+- Press `a` for Android emulator
+- Scan QR code with Expo Go app on your phone
 
-1. **Open the mobile app** on your device or simulator
-2. **Register a new user:**
+### Step 6: Test Complete Authentication Flow
+
+1. **Open the mobile app** (http://localhost:8081 for web)
+2. **Register a new user**:
    - Fill in the registration form
-   - Use a real email (you'll need to verify it)
-   - Password must meet requirements (8+ chars, uppercase, lowercase, number, special char)
-3. **Check your email** for the verification link
-4. **Click the verification link** to verify your account
-5. **Return to the app** and log in with your credentials
-6. **Test biometric authentication** (if available on your device)
+   - Use any email address (emails are caught by Mailhog)
+   - Password requirements: 8+ chars with uppercase, lowercase, number, special char
+3. **Check email verification** at http://localhost:8025
+4. **Click verification link** in the email
+5. **Return to mobile app** and log in with your credentials
+6. **Verify successful login** - you should see the home screen
 
 ## 🔍 Verification Checklist
 
 After setup, verify each component:
 
-### Backend Services
-- [ ] **PostgreSQL**: `docker-compose exec postgres psql -U postgres -d soultalk -c "\dt"`
-- [ ] **Redis**: `docker-compose exec redis redis-cli ping`
-- [ ] **Keycloak**: Visit http://localhost:8080/admin (admin/admin)
-- [ ] **Backend API**: Visit http://localhost:8000/docs
-- [ ] **Nginx**: `curl -I http://localhost/health`
+### Infrastructure Services
+- [ ] **PostgreSQL**: Running on port 5433
+- [ ] **Redis**: Running on port 6379  
+- [ ] **Keycloak**: Accessible at http://localhost:8080
+- [ ] **Backend API**: Accessible at http://localhost:8000
+- [ ] **Mailhog**: Accessible at http://localhost:8025
 
 ### Keycloak Configuration
-- [ ] **Realm exists**: SoulTalk realm visible in admin console
-- [ ] **Clients configured**: soultalk-backend and soultalk-mobile clients
-- [ ] **Groups created**: free-users, premium-users, admin-users
-- [ ] **Roles assigned**: user, premium, admin roles
+- [ ] **SoulTalk realm**: Exists and configured
+- [ ] **Backend client**: soultalk-backend configured
+- [ ] **Mobile client**: soultalk-mobile configured  
+- [ ] **User groups**: free-users, premium-users, admin-users created
+- [ ] **Email verification**: Required for new users
 
 ### Mobile App
 - [ ] **App starts**: Expo development server running
@@ -229,12 +133,15 @@ After setup, verify each component:
 - [ ] **API connectivity**: App can communicate with backend
 - [ ] **Token storage**: Secure token storage working
 
-## 🧪 Test Authentication Flow
+## 🧪 Test API Endpoints
 
-### Backend API Testing
+Test the backend API directly:
 
 ```bash
-# Test user registration
+# Test health endpoint
+curl http://localhost:8000/health
+
+# Register a new user
 curl -X POST "http://localhost:8000/api/auth/register" \
   -H "Content-Type: application/json" \
   -d '{
@@ -244,7 +151,7 @@ curl -X POST "http://localhost:8000/api/auth/register" \
     "last_name": "User"
   }'
 
-# Test user login (after email verification)
+# After email verification, test login
 curl -X POST "http://localhost:8000/api/auth/login" \
   -H "Content-Type: application/json" \
   -d '{
@@ -252,156 +159,178 @@ curl -X POST "http://localhost:8000/api/auth/login" \
     "password": "TestPass123!"
   }'
 
-# Test protected endpoint (use access_token from login response)
+# Test protected endpoint (use access_token from login)
 curl -X GET "http://localhost:8000/api/auth/me" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
-### Mobile App Testing
-
-1. **Registration Flow**:
-   - Enter user details
-   - Submit registration
-   - Check for success message
-   - Verify email verification requirement
-
-2. **Login Flow**:
-   - Enter credentials
-   - Submit login
-   - Verify token storage
-   - Check navigation to home screen
-
-3. **Token Management**:
-   - Test automatic token refresh
-   - Test logout functionality
-   - Verify secure token storage
-
 ## 🚨 Common Issues and Solutions
 
-### Issue: Keycloak Won't Start
-**Symptoms**: Container keeps restarting
+### Issue: Services Won't Start
+**Symptoms**: Docker containers keep restarting
 **Solution**:
 ```bash
-# Check logs for specific error
-docker-compose logs keycloak
+cd SoulTalk-Infra
+# Check logs for specific errors
+docker-compose logs
 
-# Common fix: Increase Docker memory allocation
-# Docker Desktop -> Settings -> Resources -> Memory -> 4GB+
+# Reset everything
+./scripts/reset.sh
 
-# Clean restart
-docker-compose down -v
-docker-compose up -d
+# Check Docker memory allocation (should be 4GB+)
 ```
 
 ### Issue: Backend Can't Connect to Keycloak
 **Symptoms**: Authentication endpoints return 500 errors
 **Solution**:
 ```bash
-# Verify Keycloak is accessible from backend container
-docker-compose exec backend curl http://keycloak:8080/health
+cd SoulTalk-Infra
+# Verify Keycloak is accessible from backend
+docker-compose exec backend curl http://keycloak:8080/health/ready
 
 # Check environment variables
 docker-compose exec backend env | grep KEYCLOAK
 
-# Restart backend service
+# Restart backend
 docker-compose restart backend
 ```
 
-### Issue: Mobile App Can't Connect to API
+### Issue: Mobile App Can't Connect to Backend
 **Symptoms**: Network errors in mobile app
 **Solution**:
+- **For web browser**: Use http://localhost:8000
+- **For iOS Simulator**: Use http://localhost:8000
+- **For Android Emulator**: Use http://10.0.2.2:8000
+- **For physical device**: Use your computer's IP address
+
+Find your IP:
 ```bash
-# For iOS Simulator, use localhost
-# For Android Emulator, use 10.0.2.2
-# For physical device, use your computer's IP
+# Mac
+ipconfig getifaddr en0
 
-# Find your IP
-ipconfig getifaddr en0  # Mac
-ip route get 1 | awk '{print $7}'  # Linux
+# Linux  
+hostname -I | awk '{print $1}'
 
-# Update app.json with correct IP
+# Windows
+ipconfig | findstr IPv4
 ```
 
 ### Issue: Email Verification Not Working
-**Symptoms**: No verification emails received
+**Symptoms**: No verification emails in Mailhog
 **Solution**:
 ```bash
-# Configure SMTP in Keycloak Admin Console
-# Realm Settings -> Email
-# Use Gmail SMTP or other email provider
+cd SoulTalk-Infra
+# Check Keycloak SMTP configuration
+# Go to http://localhost:8080/admin
+# SoulTalk realm -> Realm Settings -> Email
+# Should be configured to use Mailhog (host: mailhog, port: 1025)
 
-# For development, check Keycloak logs for email content
-docker-compose logs keycloak | grep -i email
+# Check backend logs for email errors
+docker-compose logs backend | grep -i email
 ```
 
 ## 📱 Mobile Development Tips
 
 ### Running on Physical Device
 ```bash
-# Make sure your phone and computer are on the same network
-# Update app.json with your computer's IP address
-{
-  "extra": {
-    "keycloakConfig": {
-      "url": "http://YOUR_IP:8080",
-      "realm": "soultalk",
-      "clientId": "soultalk-mobile"
-    },
-    "apiConfig": {
-      "baseUrl": "http://YOUR_IP:8000/api"
-    }
-  }
-}
+# Find your computer's IP address
+ipconfig getifaddr en0  # Mac
+
+# Update mobile app configuration if needed
+# Check SoulTalk-Mobile/src/services/AuthService.ts
+# Ensure API base URL uses your IP instead of localhost
 ```
 
 ### Debugging Authentication
 ```javascript
-// Add to AuthService.ts for debugging
-console.log('Token request:', tokenRequest);
-console.log('Token response:', tokenResponse);
-console.log('Stored token:', await SecureStore.getItemAsync('access_token'));
+// Add to mobile app for debugging
+console.log('Login request:', loginData);
+console.log('Login response:', response);
+console.log('Stored tokens:', await getTokens());
 ```
 
-## 🔐 Security Notes
+## 🔧 Development Commands
 
-### Development Security
-- Default passwords are for development only
-- Change all secrets in production
-- Enable HTTPS in production
-- Use proper CORS origins
-
-### Production Preparation
+### Infrastructure Management
 ```bash
-# Generate secure secrets
-openssl rand -hex 32  # For JWT_SECRET
-openssl rand -hex 32  # For SECRET_KEY
-openssl rand -hex 16  # For client secrets
+cd SoulTalk-Infra
+
+# Start services
+./scripts/start.sh
+
+# View logs
+./scripts/logs.sh [service-name]
+
+# Stop services  
+./scripts/stop.sh
+
+# Reset everything (removes all data)
+./scripts/reset.sh
+
+# Check status
+docker-compose ps
 ```
+
+### Backend Development
+```bash
+cd SoulTalk-backend
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run tests (if available)
+pytest
+
+# Check code formatting
+black --check app/
+```
+
+### Mobile Development  
+```bash
+cd SoulTalk-Mobile
+
+# Install dependencies
+npm install
+
+# Start development server
+npm start
+
+# Run type checking
+npx tsc --noEmit
+
+# Clear cache
+npx expo start --clear
+```
+
+## 🎉 Success Verification
+
+If everything is working correctly, you should be able to:
+
+1. ✅ **Register** a new user via mobile app
+2. ✅ **Receive verification email** in Mailhog  
+3. ✅ **Click verification link** and verify account
+4. ✅ **Login** with verified credentials
+5. ✅ **Access protected routes** in mobile app
+6. ✅ **View API documentation** at http://localhost:8000/docs
+7. ✅ **See user profile** in mobile app
 
 ## 📚 Next Steps
 
 After successful setup:
 
-1. **Explore the Code**: Understand the authentication flow
-2. **Customize UI**: Modify mobile app screens
-3. **Add Features**: Extend API with new endpoints
-4. **Production Setup**: Use Terraform for cloud deployment
-5. **Monitoring**: Set up logging and monitoring
+1. **Explore the codebase**: Understand the authentication flow
+2. **Customize mobile UI**: Modify screens and components
+3. **Add new API endpoints**: Extend backend functionality  
+4. **Configure production settings**: Prepare for deployment
+5. **Set up monitoring**: Add logging and health checks
 
 ## 🤝 Getting Help
 
 If you encounter issues:
-1. Check the troubleshooting section above
-2. Review Docker and service logs
-3. Verify all environment variables
-4. Check network connectivity between services
 
-## 🎉 Success!
+1. Check the [troubleshooting section](#-common-issues-and-solutions) above
+2. Review service logs: `./SoulTalk-Infra/scripts/logs.sh [service]`
+3. Verify all prerequisites are installed
+4. Try the reset script: `./SoulTalk-Infra/scripts/reset.sh`
 
-If you've completed all steps successfully, you now have:
-- A fully functional Keycloak authentication system
-- A FastAPI backend with JWT validation
-- A React Native mobile app with complete auth flows
-- A production-ready development environment
-
-**You're ready to start building SoulTalk! 🚀**
+**You're ready to start building with SoulTalk! 🚀**
