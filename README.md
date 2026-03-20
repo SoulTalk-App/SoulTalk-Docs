@@ -7,6 +7,7 @@ All project documentation lives here.
 - **[Product Bible](product/product-bible.md)** - Full product spec: screens, SoulBar, SoulGate, badges, phases, glossary
 - **[Journal Implementation Plan](product/journal-plan.md)** - Journal + mood tracking backend/mobile plan (8 phases)
 - **[Affirmation Mirror](product/affirmation-mirror.md)** - Daily personalized affirmation: backend generation, API, mobile reveal UX
+- **[Backend Gaps & Issues](product/backend-gaps.md)** - Prioritized audit: security, timezone bugs, test coverage, feature completeness
 
 ## Setup & Development
 
